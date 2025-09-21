@@ -65,6 +65,7 @@ from .llm_prompts import (
     SECTION_CRITIQUE_PROMPT,
     GRANULAR_CRITIQUE_PROMPT,
 )
+from .resume_radar_bridge import run_resume_radar_pipeline
 
 # TAG colors from original resume-radar system
 TAG_COLORS = {
@@ -349,6 +350,12 @@ class ResumeRadarService:
         Create annotated PDF with GUARANTEED fallback - ALWAYS returns a PDF
         Returns both PDF bytes and the output file path
         """
+        # Try the original resume-radar full pipeline first for perfect parity
+        try:
+            return run_resume_radar_pipeline(pdf_file, output_dir)
+        except Exception as e:
+            print(f"⚠️ Original resume-radar pipeline failed: {e}")
+        
         # Get original PDF data first (for guaranteed fallback)
         if hasattr(pdf_file, 'read'):
             pdf_file.seek(0)
