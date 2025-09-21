@@ -7,7 +7,7 @@ import os
 import io
 import re
 import json
-import fitz  # PyMuPDF
+import sys
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from openai import OpenAI
@@ -19,8 +19,43 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Silence MuPDF logs
-os.environ["MUPDF_LOG_LEVEL"] = "0"
+# Add utils directory to Python path for cloud compatibility
+utils_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'utils')
+if utils_path not in sys.path:
+    sys.path.insert(0, utils_path)
+
+# Import cloud-compatible PDF utilities
+try:
+    from pdf_utils import extract_text_from_pdf as extract_pdf_text_util, get_pdf_info
+    print("✅ Using cloud-compatible PDF utilities for Resume Radar Service")
+except ImportError:
+    # Fallback for local development
+    try:
+        import fitz  # PyMuPDF
+        print("⚠️ Using PyMuPDF fallback for Resume Radar Service")
+        # Silence MuPDF logs
+        os.environ["MUPDF_LOG_LEVEL"] = "0"
+        
+        def extract_pdf_text_util(pdf_file):
+            """Fallback PDF extraction"""
+            if isinstance(pdf_file, (str, Path)):
+                with fitz.open(pdf_file) as doc:
+                    return "\n".join([page.get_text() for page in doc])
+            else:
+                doc = fitz.open("pdf", pdf_file.read())
+                text = "\n".join([page.get_text() for page in doc])
+                doc.close()
+                return text
+        
+        def get_pdf_info():
+            return {'annotation_support': True, 'primary_processor': 'fitz'}
+            
+    except ImportError:
+        def extract_pdf_text_util(pdf_file):
+            raise RuntimeError("No PDF processing libraries available")
+        
+        def get_pdf_info():
+            return {'annotation_support': False, 'primary_processor': None}
 
 # Import the original resume-radar modules
 from .extract_pdf import extract_text_from_pdf as extract_text_from_pdf_original
@@ -116,30 +151,35 @@ Section Content:
 Return only the JSON array, no other text:"""
     
     def extract_text_from_pdf(self, pdf_file) -> str:
-        """Extract text from PDF file using PyMuPDF (original method)"""
+        """Extract text from PDF file using cloud-compatible approach"""
         try:
-            # Handle Streamlit uploaded file objects
-            if hasattr(pdf_file, 'read'):
-                # Create temporary file for the original function
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-                    pdf_bytes = pdf_file.read()
-                    pdf_file.seek(0)  # Reset file pointer for potential future use
-                    tmp_file.write(pdf_bytes)
-                    tmp_path = Path(tmp_file.name)
-                
-                # Use original extraction function
-                text = extract_text_from_pdf_original(tmp_path)
-                
-                # Clean up temporary file
-                os.unlink(tmp_path)
-                
-                return text
-            else:
-                # Direct file path
-                return extract_text_from_pdf_original(Path(pdf_file))
+            # Use the cloud-compatible PDF utility
+            return extract_pdf_text_util(pdf_file)
             
         except Exception as e:
-            raise Exception(f"Error extracting text from PDF: {str(e)}")
+            # Fallback to original method if available
+            try:
+                # Handle Streamlit uploaded file objects
+                if hasattr(pdf_file, 'read'):
+                    # Create temporary file for the original function
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+                        pdf_bytes = pdf_file.read()
+                        pdf_file.seek(0)  # Reset file pointer for potential future use
+                        tmp_file.write(pdf_bytes)
+                        tmp_path = Path(tmp_file.name)
+                    
+                    # Use original extraction function
+                    text = extract_text_from_pdf_original(tmp_path)
+                    
+                    # Clean up temporary file
+                    os.unlink(tmp_path)
+                    
+                    return text
+                else:
+                    # Direct file path
+                    return extract_text_from_pdf_original(Path(pdf_file))
+            except Exception as fallback_error:
+                raise Exception(f"Error extracting text from PDF (primary: {str(e)}, fallback: {str(fallback_error)})")
     
     def clean_text(self, text: str) -> str:
         """Clean extracted text while preserving line breaks for section detection"""

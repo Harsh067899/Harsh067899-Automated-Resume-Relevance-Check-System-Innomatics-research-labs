@@ -8,12 +8,12 @@ streamlit-extras==0.3.5
 openai==1.3.0
 google-generativeai==0.3.2
 
-# PDF and Document Processing
-PyMuPDF==1.23.8
-python-docx==0.8.11
+# PDF and Document Processing (Streamlit Cloud compatible)
 pdfplumber==0.9.0
-docx2txt==0.8
 pypdf==4.2.0
+python-docx==0.8.11
+docx2txt==0.8
+pdfminer.six==20221105
 
 # Data Processing and Analysis
 pandas==2.1.3
@@ -45,10 +45,7 @@ openpyxl==3.1.2
 scipy==1.11.4
 typing-extensions==4.8.0
 
-# Streamlit Cloud compatible packages only
-# Note: Removed problematic packages for cloud deployment:
-# - selenium, webdriver-manager, chromedriver-autoinstaller (browser automation)
-# - pdf2image, pytesseract (system dependencies)
-# - pathlib2 (deprecated for Python 3.6+)
-# - difflib (built-in Python module)
-# - Duplicate package entries
+# Cloud deployment optimized - removed packages causing build issues:
+# - PyMuPDF (compilation issues on Streamlit Cloud Linux environment)
+# - fitz (also part of PyMuPDF, causes build failures)
+# Using pdfplumber + pypdf + pdfminer.six for comprehensive PDF processing

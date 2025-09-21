@@ -7,11 +7,42 @@ import json
 import re
 from typing import Dict, List, Optional, Union
 from pathlib import Path
-import fitz  # PyMuPDF
+import os
+import sys
+
+# Add utils directory to Python path for cloud compatibility
+utils_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'utils')
+if utils_path not in sys.path:
+    sys.path.insert(0, utils_path)
+
+# Import cloud-compatible PDF utilities
+try:
+    from pdf_utils import extract_text_from_pdf as extract_pdf_text
+    print("✅ Using cloud-compatible PDF utilities for JD parsing")
+except ImportError:
+    # Fallback for local development
+    try:
+        import fitz  # PyMuPDF
+        print("⚠️ Using PyMuPDF fallback for JD parsing (may not work on Streamlit Cloud)")
+        
+        def extract_pdf_text(pdf_file):
+            """Fallback PDF extraction using PyMuPDF"""
+            if isinstance(pdf_file, (str, Path)):
+                with fitz.open(pdf_file) as doc:
+                    return "\n".join([page.get_text() for page in doc])
+            else:
+                # Handle file-like objects
+                doc = fitz.open("pdf", pdf_file.read())
+                text = "\n".join([page.get_text() for page in doc])
+                doc.close()
+                return text
+    except ImportError:
+        def extract_pdf_text(pdf_file):
+            raise RuntimeError("No PDF processing libraries available for JD parsing")
+
 import docx
 from openai import OpenAI
 from dotenv import load_dotenv
-import os
 
 # Load environment variables
 load_dotenv()
@@ -67,13 +98,13 @@ Return only the JSON object:"""
                 return f.read()
     
     def _extract_from_pdf(self, pdf_path: Path) -> str:
-        """Extract text from PDF using PyMuPDF"""
-        doc = fitz.open(pdf_path)
-        text = ""
-        for page in doc:
-            text += page.get_text()
-        doc.close()
-        return text
+        """Extract text from PDF using cloud-compatible approach"""
+        try:
+            with open(pdf_path, 'rb') as f:
+                return extract_pdf_text(f)
+        except Exception as e:
+            print(f"❌ PDF extraction failed for {pdf_path}: {str(e)}")
+            return ""
     
     def _extract_from_docx(self, docx_path: Path) -> str:
         """Extract text from DOCX file"""
