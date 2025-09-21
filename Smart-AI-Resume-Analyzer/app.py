@@ -3693,8 +3693,6 @@ class ResumeApp:
         )
         
         st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.toast("Check out these repositories: [AI-Nexus(AI/ML)](https://github.com/Hunterdii/AI-Nexus)", icon="ℹ️")
 
         # Call-to-Action with Streamlit navigation
         col1, col2, col3 = st.columns([1, 1, 1])
