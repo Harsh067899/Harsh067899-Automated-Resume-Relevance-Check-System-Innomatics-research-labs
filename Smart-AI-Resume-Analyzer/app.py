@@ -35,6 +35,7 @@ from config.database import (
 from utils.ai_resume_analyzer import AIResumeAnalyzer
 from utils.resume_builder import ResumeBuilder
 from utils.resume_analyzer import ResumeAnalyzer
+from utils.pdf_utils import extract_text_from_pdf, extract_text_from_docx
 from resume_radar.resume_radar_service import ResumeRadarService
 from resume_radar.jd_parser import JobDescriptionParser
 from resume_radar.matching_engine import ResumeJDMatcher
@@ -193,9 +194,23 @@ class ResumeApp:
         # Initialize database
         init_database()
 
-        # Load external CSS
-        with open('style/style.css') as f:
-            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+        # Load external CSS (conditional loading)
+        try:
+            import os
+            css_path = os.path.join(os.path.dirname(__file__), 'style', 'style.css')
+            if os.path.exists(css_path):
+                with open(css_path, 'r', encoding='utf-8') as f:
+                    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+            else:
+                # Fallback: use inline basic styling
+                st.markdown("""
+                <style>
+                .main { padding: 1rem; }
+                .stApp { background-color: #f0f2f6; }
+                </style>
+                """, unsafe_allow_html=True)
+        except Exception as e:
+            st.warning(f"CSS loading failed, using default styling: {e}")
 
         # Load Google Fonts
         st.markdown("""

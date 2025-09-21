@@ -225,5 +225,31 @@ def test_pdf_processing():
     return True
 
 
+def extract_text_from_docx(docx_file) -> str:
+    """
+    Extract text from DOCX file
+    Compatible with Streamlit Cloud environment
+    """
+    try:
+        from docx import Document
+        
+        # Handle both file-like objects and bytes
+        if hasattr(docx_file, 'read'):
+            doc = Document(docx_file)
+        else:
+            doc = Document(io.BytesIO(docx_file))
+        
+        text = ""
+        for paragraph in doc.paragraphs:
+            text += paragraph.text + "\n"
+        
+        return text.strip()
+    
+    except ImportError:
+        raise RuntimeError("python-docx package not available for DOCX processing")
+    except Exception as e:
+        raise RuntimeError(f"Failed to extract text from DOCX: {str(e)}")
+
+
 if __name__ == "__main__":
     test_pdf_processing()
