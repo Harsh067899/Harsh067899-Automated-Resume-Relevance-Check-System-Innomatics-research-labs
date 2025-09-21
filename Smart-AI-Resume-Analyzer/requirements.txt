@@ -1,51 +1,34 @@
 # Core Streamlit and Web Framework
-streamlit==1.28.1
-streamlit-option-menu==0.3.6
-streamlit-lottie==0.0.5
-streamlit-extras==0.3.5
+streamlit
+streamlit-option-menu
+streamlit-lottie
+streamlit-extras
 
 # AI and Machine Learning
-openai==1.3.0
-google-generativeai==0.3.2
+openai
+python-dotenv
 
-# PDF and Document Processing (Streamlit Cloud compatible)
-pdfplumber==0.9.0
-pypdf==4.2.0
-python-docx==0.8.11
-docx2txt==0.8
-pdfminer.six==20221105
+# PDF and Document Processing (Cloud compatible - no compilation needed)
+pdfplumber
+pypdf
+python-docx
+pdfminer.six
 
-# Data Processing and Analysis - Updated for Python 3.13 compatibility
-pandas==2.2.2
-numpy==1.26.4
-scikit-learn==1.4.2
+# Basic Data Processing (minimal versions to avoid compilation)
+numpy
+plotly
 
-# Plotting and Visualization - Updated for compatibility
-plotly==5.18.0
-matplotlib==3.8.3
-seaborn==0.13.2
+# Text Processing
+nltk
 
-# Image Processing - Updated version
-Pillow==10.2.0
+# Text Processing
+nltk
 
-# Environment and Configuration
-python-dotenv==1.0.0
+# Image Processing
+Pillow
 
-# HTTP Requests
-requests==2.32.0
+# HTTP Requests  
+requests
 
-# Text Processing and NLP - Updated for compatibility
-nltk==3.8.1
-
-# Database and Storage - Updated versions
-sqlalchemy==2.0.25
-openpyxl==3.1.2
-
-# Essential Python packages - Updated for Python 3.13
-scipy==1.12.0
-typing-extensions==4.9.0
-
-# Cloud deployment optimized - removed packages causing build issues:
-# - PyMuPDF (compilation issues on Streamlit Cloud Linux environment)
-# - fitz (also part of PyMuPDF, causes build failures)
-# Using pdfplumber + pypdf + pdfminer.six for comprehensive PDF processing
+# Essential packages
+typing-extensions

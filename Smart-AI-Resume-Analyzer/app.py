@@ -106,6 +106,9 @@ class ResumeApp:
         # Initialize dashboard manager
         self.dashboard_manager = DashboardManager()
         
+        # Initialize job description parser for placement dashboard
+        self.jd_parser = JobDescriptionParser()
+        
         # Initialize footer navigation
         self.footer_nav = FooterNavigation()
 
