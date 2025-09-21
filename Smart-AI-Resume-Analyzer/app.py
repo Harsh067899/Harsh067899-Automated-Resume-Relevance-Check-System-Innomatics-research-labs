@@ -11,9 +11,8 @@ from ui_components import (
     render_suggestions_section
 )
 from ui.modern_components import (
-    apply_modern_styles, render_modern_header, FooterNavigation,
-    create_modern_card, create_metric_cards, create_feature_grid,
-    feature_card, hero_section
+    render_modern_header, FooterNavigation,
+    create_modern_card, create_metric_cards, create_feature_grid
 )
 from ui.footer_nav import create_bottom_navigation_with_js
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -46,6 +45,10 @@ import json
 import streamlit as st
 import datetime
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Set page config at the very beginning with modern settings
 st.set_page_config(
