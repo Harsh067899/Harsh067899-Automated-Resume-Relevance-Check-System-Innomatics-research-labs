@@ -3664,7 +3664,11 @@ class ResumeApp:
         )
         
         # Get current page from footer navigation
-        current_page = self.footer_nav.get_current_page()
+        try:
+            current_page = self.footer_nav.get_current_page()
+        except Exception as e:
+            st.error(f"Footer navigation error: {e}")
+            current_page = 'home'
         
         # Page routing with clean navigation
         page_options = {
@@ -3733,7 +3737,24 @@ class ResumeApp:
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Render footer navigation
-        self.footer_nav.render()
+        try:
+            self.footer_nav.render()
+        except Exception as e:
+            st.error(f"Footer render error: {e}")
+            # Simple fallback navigation
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button("Home", type="primary"):
+                    st.session_state.footer_nav_page = 'home'
+                    st.rerun()
+            with col2:
+                if st.button("Analyzer"):
+                    st.session_state.footer_nav_page = 'analyzer'
+                    st.rerun()
+            with col3:
+                if st.button("About"):
+                    st.session_state.footer_nav_page = 'about'
+                    st.rerun()
 
 if __name__ == "__main__":
     app = ResumeApp()
