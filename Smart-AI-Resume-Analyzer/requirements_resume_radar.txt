@@ -1,0 +1,3 @@
+# Additional dependencies for Resume Radar feature
+PyMuPDF>=1.23.0
+pymupdf
