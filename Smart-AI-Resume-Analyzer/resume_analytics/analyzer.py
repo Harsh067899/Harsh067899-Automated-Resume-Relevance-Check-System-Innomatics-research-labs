@@ -1,13 +1,34 @@
-import spacy
 from collections import Counter
 from datetime import datetime
 
+# Conditional spacy import for cloud compatibility
+try:
+    import spacy
+    SPACY_AVAILABLE = True
+    # Try to load the language model
+    try:
+        nlp_model = spacy.load("en_core_web_sm")
+    except OSError:
+        # Language model not available, use basic processing
+        nlp_model = None
+        SPACY_AVAILABLE = False
+except ImportError:
+    SPACY_AVAILABLE = False
+    nlp_model = None
+
 class ResumeAnalyzer:
     def __init__(self):
-        self.nlp = spacy.load("en_core_web_sm")
+        if SPACY_AVAILABLE and nlp_model:
+            self.nlp = nlp_model
+        else:
+            self.nlp = None
         
     def analyze_resume(self, resume_text):
         """Analyze resume text and return metrics"""
+        if not self.nlp:
+            # Fallback analysis without spacy
+            return self._basic_analysis(resume_text)
+        
         doc = self.nlp(resume_text)
         
         # Basic metrics
@@ -134,3 +155,60 @@ class ResumeAnalyzer:
             })
             
         return suggestions
+
+    def _basic_analysis(self, resume_text):
+        """Basic analysis fallback when spacy is not available"""
+        # Basic metrics without NLP
+        words = resume_text.split()
+        word_count = len(words)
+        sentences = resume_text.split('.')
+        sentence_count = len([s for s in sentences if s.strip()])
+        
+        # Simple skills extraction based on common keywords
+        basic_skills = self._extract_basic_skills(resume_text)
+        
+        # Simple experience estimation
+        experience_years = self._estimate_experience_basic(resume_text)
+        
+        # Calculate basic score
+        score = self._calculate_score(word_count, sentence_count, basic_skills, experience_years)
+        
+        # Generate suggestions
+        suggestions = self._generate_suggestions(word_count, sentence_count, basic_skills, experience_years)
+        
+        return {
+            'score': score,
+            'word_count': word_count,
+            'sentence_count': sentence_count,
+            'skills': basic_skills,
+            'experience_years': experience_years,
+            'suggestions': suggestions
+        }
+    
+    def _extract_basic_skills(self, text):
+        """Extract skills using simple keyword matching"""
+        text_lower = text.lower()
+        skill_keywords = [
+            'python', 'java', 'javascript', 'react', 'node.js', 'sql', 'html', 'css',
+            'machine learning', 'ai', 'data science', 'analytics', 'excel', 'powerbi',
+            'aws', 'azure', 'docker', 'kubernetes', 'git', 'agile', 'scrum'
+        ]
+        
+        found_skills = []
+        for skill in skill_keywords:
+            if skill in text_lower:
+                found_skills.append(skill)
+        
+        return found_skills
+    
+    def _estimate_experience_basic(self, text):
+        """Basic experience estimation"""
+        text_lower = text.lower()
+        # Look for year patterns
+        import re
+        years = re.findall(r'(\d{4})', text)
+        if len(years) >= 2:
+            years = [int(y) for y in years if 1990 <= int(y) <= 2025]
+            if years:
+                return max(years) - min(years)
+        return 1  # Default to 1 year
