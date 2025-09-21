@@ -1,35 +1,61 @@
-streamlit
-streamlit-option-menu
-streamlit-lottie
-streamlit-extras
-streamlit-custom-notification-box
-python-docx
-pandas
-plotly
-pillow
-pycryptodome==3.20.0
-python-dotenv
-pdfminer.six==20221105
-nltk
-scikit-learn
-sqlalchemy
-openpyxl
-requests
-spacy
+# Core Streamlit and Web Framework
+streamlit==1.28.1
+streamlit-option-menu==0.3.6
+streamlit-lottie==0.0.5
+streamlit-extras==0.3.5
+
+# AI and Machine Learning
+openai==1.3.0
+google-generativeai==0.3.2
+
+# PDF and Document Processing
+PyMuPDF==1.23.8
+python-docx==0.8.11
+pdfplumber==0.9.0
+docx2txt==0.8
 pypdf==4.2.0
-selenium
-numpy
-webdriver-manager
-chromedriver-autoinstaller
-google-generativeai
-pdf2image
-pytesseract
-pdfplumber
-reportlab
-openrouter
-docx2pdf
-docx2txt
-python-pptx
-matplotlib
-seaborn
-pypdf2
+
+# Data Processing and Analysis
+pandas==2.1.3
+numpy==1.25.2
+scikit-learn==1.3.2
+
+# Plotting and Visualization
+plotly==5.17.0
+matplotlib==3.8.2
+seaborn==0.12.2
+
+# Image Processing
+Pillow==10.1.0
+
+# Environment and Configuration
+python-dotenv==1.0.0
+
+# HTTP Requests
+requests==2.31.0
+
+# Text Processing and NLP
+nltk==3.8.1
+
+# Database and Storage
+sqlalchemy==2.0.23
+openpyxl==3.1.2
+
+# Additional Utilities for deployment
+pathlib2==2.3.7
+
+# Note: Removed packages that might cause issues on Streamlit Cloud:
+# - selenium (not needed for cloud deployment)
+# - webdriver-manager (browser automation not needed)  
+# - chromedriver-autoinstaller (not needed)
+# - pdf2image (might have system dependencies)
+# - pytesseract (requires Tesseract installation)
+# - docx2pdf (might have system dependencies)
+# - python-pptx (not needed for current features)
+# - pypdf2 (deprecated, using pypdf instead)
+PyMuPDF
+openai
+difflib
+scipy
+typing-extensions
+pathlib2

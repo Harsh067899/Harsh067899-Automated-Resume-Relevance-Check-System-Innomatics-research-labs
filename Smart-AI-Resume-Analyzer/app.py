@@ -10,6 +10,12 @@ from ui_components import (
     page_header, render_analytics_section, render_activity_section,
     render_suggestions_section
 )
+from ui.modern_components import (
+    apply_modern_styles, render_modern_header, FooterNavigation,
+    create_modern_card, create_metric_cards, create_feature_grid,
+    feature_card, hero_section
+)
+from ui.footer_nav import create_bottom_navigation_with_js
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
 from docx import Document
@@ -39,12 +45,14 @@ import pandas as pd
 import json
 import streamlit as st
 import datetime
+import os
 
-# Set page config at the very beginning
+# Set page config at the very beginning with modern settings
 st.set_page_config(
     page_title="Smart Resume AI",
     page_icon="🚀",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"  # Collapsed for modern footer nav
 )
 
 
@@ -94,12 +102,15 @@ class ResumeApp:
 
         # Initialize dashboard manager
         self.dashboard_manager = DashboardManager()
+        
+        # Initialize footer navigation
+        self.footer_nav = FooterNavigation()
 
         self.analyzer = ResumeAnalyzer()
         self.ai_analyzer = AIResumeAnalyzer()
         self.builder = ResumeBuilder()
         self.resume_radar = ResumeRadarService()
-        self.jd_parser = JobDescriptionParser()
+        self.job_roles = JOB_ROLES
         self.matcher = ResumeJDMatcher()
         
         # Initialize placement dashboard database
@@ -519,11 +530,27 @@ class ResumeApp:
     def load_image(self, image_name):
         """Load image from static directory"""
         try:
-            image_path = f"c:/Users/shree/Downloads/smart-resume-ai/{image_name}"
-            with open(image_path, "rb") as f:
-                image_bytes = f.read()
-            encoded = base64.b64encode(image_bytes).decode()
-            return f"data:image/png;base64,{encoded}"
+            # Try multiple possible paths for deployment compatibility
+            possible_paths = [
+                f"assets/{image_name}",
+                f"static/{image_name}",
+                f"images/{image_name}",
+                f"./{image_name}"
+            ]
+            
+            for image_path in possible_paths:
+                try:
+                    if os.path.exists(image_path):
+                        with open(image_path, "rb") as f:
+                            image_bytes = f.read()
+                        encoded = base64.b64encode(image_bytes).decode()
+                        return f"data:image/png;base64,{encoded}"
+                except Exception:
+                    continue
+            
+            # If no local image found, return None (will use GitHub avatar as fallback)
+            return None
+            
         except Exception as e:
             print(f"Error loading image {image_name}: {e}")
             return None
@@ -3626,74 +3653,87 @@ class ResumeApp:
 
 
     def main(self):
-        """Main application entry point"""
-        self.apply_global_styles()
+        """Main application entry point with modern footer navigation"""
+        # Apply modern professional styles
+        apply_modern_styles()
         
-        # Admin login/logout in sidebar
-        with st.sidebar:
-            st_lottie(self.load_lottie_url("https://assets5.lottiefiles.com/packages/lf20_xyadoh9h.json"), height=200, key="sidebar_animation")
-            st.title("Smart Resume AI")
-            st.markdown("---")
+        # Modern header
+        render_modern_header(
+            "Smart Resume AI", 
+            "Transform your career with AI-powered resume analysis and building"
+        )
+        
+        # Get current page from footer navigation
+        current_page = self.footer_nav.get_current_page()
+        
+        # Page routing with clean navigation
+        page_options = {
+            "home": self.render_home,
+            "analyzer": self.render_analyzer,
+            "radar": self.render_resume_radar,
+            "placement": self.render_placement_dashboard,
+            "builder": self.render_builder,
+            "dashboard": self.render_dashboard,
+            "job-search": self.render_job_search,
+            "about": self.render_about
+        }
+        
+        # Main content area with proper spacing
+        st.markdown('<div class="main-content">', unsafe_allow_html=True)
+        
+        # Admin functionality in the top right corner
+        with st.container():
+            col1, col2 = st.columns([4, 1])
             
-            # Navigation buttons
-            for page_name in self.pages.keys():
-                if st.button(page_name, use_container_width=True):
-                    cleaned_name = page_name.lower().replace(" ", "_").replace("🏠", "").replace("🔍", "").replace("⌖", "").replace("📝", "").replace("📊", "").replace("🎯", "").replace("💬", "").replace("ℹ️", "").strip()
-                    st.session_state.page = cleaned_name
-                    st.rerun()
-
-            # Add some space before admin login
-            st.markdown("<br><br>", unsafe_allow_html=True)
-            st.markdown("---")
-
-            # Admin Login/Logout section at bottom
-            if st.session_state.get('is_admin', False):
-                st.success(f"Logged in as: {st.session_state.get('current_admin_email')}")
-                if st.button("Logout", key="logout_button"):
-                    try:
-                        log_admin_action(st.session_state.get('current_admin_email'), "logout")
-                        st.session_state.is_admin = False
-                        st.session_state.current_admin_email = None
-                        st.success("Logged out successfully!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error during logout: {str(e)}")
-            else:
-                with st.expander("👤 Admin Login"):
-                    admin_email_input = st.text_input("Email", key="admin_email_input")
-                    admin_password = st.text_input("Password", type="password", key="admin_password_input")
-                    if st.button("Login", key="login_button"):
+            with col2:
+                if st.session_state.get('is_admin', False):
+                    st.success("🔓 Admin")
+                    if st.button("Logout", key="logout_btn", type="secondary"):
+                        try:
+                            log_admin_action(st.session_state.get('current_admin_email'), "logout")
+                            st.session_state.is_admin = False
+                            st.session_state.current_admin_email = None
+                            st.success("Logged out successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+                else:
+                    with st.popover("👤 Admin", use_container_width=False):
+                        admin_email = st.text_input("Email", key="admin_email")
+                        admin_pass = st.text_input("Password", type="password", key="admin_pass")
+                        if st.button("Login", key="admin_login", type="primary"):
                             try:
-                                if verify_admin(admin_email_input, admin_password):
+                                if verify_admin(admin_email, admin_pass):
                                     st.session_state.is_admin = True
-                                    st.session_state.current_admin_email = admin_email_input
-                                    log_admin_action(admin_email_input, "login")
-                                    st.success("Logged in successfully!")
+                                    st.session_state.current_admin_email = admin_email
+                                    log_admin_action(admin_email, "login")
+                                    st.success("Logged in!")
                                     st.rerun()
                                 else:
                                     st.error("Invalid credentials")
                             except Exception as e:
-                                st.error(f"Error during login: {str(e)}")
+                                st.error(f"Error: {str(e)}")
         
-        # Force home page on first load
+        # Initialize page on first load
         if 'initial_load' not in st.session_state:
             st.session_state.initial_load = True
-            st.session_state.page = 'home'
-            st.rerun()
+            current_page = 'home'
         
-        # Get current page and render it
-        current_page = st.session_state.get('page', 'home')
+        # Render the selected page
+        try:
+            if current_page in page_options:
+                page_options[current_page]()
+            else:
+                # Default to home page
+                page_options["home"]()
+        except Exception as e:
+            st.error(f"Error rendering page: {str(e)}")
+            st.info("Please try refreshing the page.")
+            
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        # Create a mapping of cleaned page names to original names
-        page_mapping = {name.lower().replace(" ", "_").replace("🏠", "").replace("🔍", "").replace("⌖", "").replace("📝", "").replace("📊", "").replace("🎯", "").replace("💬", "").replace("ℹ️", "").strip(): name 
-                       for name in self.pages.keys()}
-        
-        # Render the appropriate page
-        if current_page in page_mapping:
-            self.pages[page_mapping[current_page]]()
-        else:
-            # Default to home page if invalid page
-            self.render_home()
+        # Render footer navigation
+        self.footer_nav.render()
 
 if __name__ == "__main__":
     app = ResumeApp()

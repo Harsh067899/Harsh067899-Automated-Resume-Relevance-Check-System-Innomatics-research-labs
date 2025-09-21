@@ -1,9 +1,6 @@
-chromium
-chromium-driver
+# System packages needed for PDF processing and document handling
+libgl1-mesa-glx
 libglib2.0-0
-libnss3
-libgconf-2-4
 libfontconfig1
-xvfb
-wget
-unzip 
+libxrender1
+libsm6 
