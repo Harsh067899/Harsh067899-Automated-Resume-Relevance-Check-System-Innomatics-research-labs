@@ -23,11 +23,19 @@ numpy==1.24.3
 sqlalchemy
 openpyxl
 
+# Document Generation
+reportlab
+
+# OCR and Image Processing (optional - may not work on all cloud platforms)
+pdf2image
+pytesseract
+
 # Visualization
 plotly
 
-# Text Processing
+# Text Processing and NLP
 nltk
+spacy
 
 # Image Processing
 Pillow
@@ -38,5 +46,5 @@ requests
 # Essential packages
 typing-extensions
 
-# Note: selenium removed - not supported in Streamlit Cloud environment
-# LinkedIn scraper will show appropriate error message when selenium is not available
+# Note: Some packages like selenium removed - not supported in Streamlit Cloud environment
+# OCR packages (pdf2image, pytesseract) may not work without system dependencies
