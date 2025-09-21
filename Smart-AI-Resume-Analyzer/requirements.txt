@@ -9,7 +9,7 @@ openai==1.3.0
 google-generativeai==0.3.2
 
 # PDF and Document Processing
-PyMuPDF==1.24.9
+PyMuPDF==1.23.8
 python-docx==0.8.11
 pdfplumber==0.9.0
 docx2txt==0.8
@@ -41,21 +41,14 @@ nltk==3.8.1
 sqlalchemy==2.0.23
 openpyxl==3.1.2
 
-# Additional Utilities for deployment
-pathlib2==2.3.7
+# Essential Python packages
+scipy==1.11.4
+typing-extensions==4.8.0
 
-# Note: Removed packages that might cause issues on Streamlit Cloud:
-# - selenium (not needed for cloud deployment)
-# - webdriver-manager (browser automation not needed)  
-# - chromedriver-autoinstaller (not needed)
-# - pdf2image (might have system dependencies)
-# - pytesseract (requires Tesseract installation)
-# - docx2pdf (might have system dependencies)
-# - python-pptx (not needed for current features)
-# - pypdf2 (deprecated, using pypdf instead)
-PyMuPDF
-openai
-difflib
-scipy
-typing-extensions
-pathlib2
+# Streamlit Cloud compatible packages only
+# Note: Removed problematic packages for cloud deployment:
+# - selenium, webdriver-manager, chromedriver-autoinstaller (browser automation)
+# - pdf2image, pytesseract (system dependencies)
+# - pathlib2 (deprecated for Python 3.6+)
+# - difflib (built-in Python module)
+# - Duplicate package entries
