@@ -15,35 +15,35 @@ python-docx==0.8.11
 docx2txt==0.8
 pdfminer.six==20221105
 
-# Data Processing and Analysis
-pandas==2.1.3
-numpy==1.25.2
-scikit-learn==1.3.2
+# Data Processing and Analysis - Updated for Python 3.13 compatibility
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.4.2
 
-# Plotting and Visualization
-plotly==5.17.0
-matplotlib==3.8.2
-seaborn==0.12.2
+# Plotting and Visualization - Updated for compatibility
+plotly==5.18.0
+matplotlib==3.8.3
+seaborn==0.13.2
 
-# Image Processing
-Pillow==10.1.0
+# Image Processing - Updated version
+Pillow==10.2.0
 
 # Environment and Configuration
 python-dotenv==1.0.0
 
 # HTTP Requests
-requests==2.31.0
+requests==2.32.0
 
-# Text Processing and NLP
+# Text Processing and NLP - Updated for compatibility
 nltk==3.8.1
 
-# Database and Storage
-sqlalchemy==2.0.23
+# Database and Storage - Updated versions
+sqlalchemy==2.0.25
 openpyxl==3.1.2
 
-# Essential Python packages
-scipy==1.11.4
-typing-extensions==4.8.0
+# Essential Python packages - Updated for Python 3.13
+scipy==1.12.0
+typing-extensions==4.9.0
 
 # Cloud deployment optimized - removed packages causing build issues:
 # - PyMuPDF (compilation issues on Streamlit Cloud Linux environment)
