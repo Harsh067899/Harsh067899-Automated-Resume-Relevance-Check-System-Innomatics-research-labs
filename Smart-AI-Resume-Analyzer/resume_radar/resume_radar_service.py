@@ -60,6 +60,12 @@ except ImportError:
 # Import the original resume-radar modules
 from .extract_pdf import extract_text_from_pdf as extract_text_from_pdf_original
 from .parse_cv import split_into_sections_dynamic
+from .llm_prompts import (
+    GLOBAL_REFLECTION_PROMPT,
+    SECTION_CRITIQUE_PROMPT,
+    GRANULAR_CRITIQUE_PROMPT,
+)
+
 # TAG colors from original resume-radar system
 TAG_COLORS = {
     "[GOOD]": [0.0, 0.7, 0.0],      # Green
@@ -96,67 +102,9 @@ class ResumeRadarService:
         self.tag_colors = TAG_COLORS
         
         # LLM Prompts (adapted from original)
-        self.global_reflection_prompt = """You are a professional CV reviewer.
-Read the CV in full and provide a JSON object with these fields:
-- rating: integer out of 20
-- strengths: list of 3 concise bullet points
-- weaknesses: list of 3 concise bullet points
-- feedback: a short paragraph of overall impressions
-
-CV:
-{cv_text}
-"""
-        
-        self.section_critique_prompt = """You are a strict CV reviewer. Rate this section of a CV out of 20.
-Be critical but fair. Use the full scale from 1-20.
-
-Rating Guidelines:
-- 17-20: Exceptional quality, stands out significantly
-- 13-16: Good quality, solid content
-- 9-12: Average/adequate, meets basic requirements
-- 5-8: Below average, needs improvement
-- 1-4: Poor quality, significant issues
-
-Tagging Rules:
-- If score >= 17 → tag = [GOOD]
-- If score <= 8 → tag = [BAD] 
-- If 9 <= score <= 12 → tag = [CAUTION]
-- Else tag = ""
-
-Return ONLY JSON with keys: snippet, rating, tag, feedback.
-
-Section Header: {header}
-Section Content:
-{content}
-"""
-        
-        self.granular_critique_prompt = """You are a strict CV reviewer. Analyze the following CV section in detail.
-Be critical and use the full rating scale. Not everything should be rated highly.
-
-Rating Guidelines:
-- 17-20: Exceptional quality, significantly stands out
-- 13-16: Good quality, solid and effective
-- 9-12: Average/adequate, meets basic requirements  
-- 5-8: Below average, needs improvement
-- 1-4: Poor quality, significant issues
-
-For each key sentence or phrase in this section, provide:
-- snippet: the exact phrase (as it appears in the text)
-- rating: an integer from 1 to 20 (be critical, use full scale)
-- tag: "[GOOD]" if rating >= 17, "[BAD]" if rating <= 8, "[CAUTION]" if 9-16, otherwise ""
-- feedback: short constructive comment
-
-You must return a valid JSON array. Example format:
-[
-    {{"snippet": "example phrase", "rating": 15, "tag": "[CAUTION]", "feedback": "comment here"}},
-    {{"snippet": "another phrase", "rating": 18, "tag": "[GOOD]", "feedback": "why it's good"}}
-]
-
-Section Header: {header}
-Section Content:
-{content}
-
-Return only the JSON array, no other text:"""
+        self.global_reflection_prompt = GLOBAL_REFLECTION_PROMPT + "\nCV:\n{cv_text}\n"
+        self.section_critique_prompt = SECTION_CRITIQUE_PROMPT + "\n\nSection Header: {header}\nSection Content:\n{content}\n"
+        self.granular_critique_prompt = GRANULAR_CRITIQUE_PROMPT + "\n\nSection Header: {header}\nSection Content:\n{content}\n\nReturn only the JSON array, no other text:"""
     
     def extract_text_from_pdf(self, pdf_file) -> str:
         """Extract text from PDF file using cloud-compatible approach"""
