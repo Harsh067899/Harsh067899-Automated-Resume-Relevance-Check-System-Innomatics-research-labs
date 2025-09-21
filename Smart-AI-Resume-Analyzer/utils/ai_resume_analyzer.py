@@ -1,10 +1,28 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-import google.generativeai as genai
+
+# Conditional imports for cloud compatibility
+try:
+    import google.generativeai as genai
+    GOOGLE_AI_AVAILABLE = True
+except ImportError:
+    GOOGLE_AI_AVAILABLE = False
+    genai = None
+
+# PDF processing
 import pdfplumber
-from pdf2image import convert_from_path
-import pytesseract
+
+# Optional OCR dependencies
+try:
+    from pdf2image import convert_from_path
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+    convert_from_path = None
+    pytesseract = None
+
 import tempfile
 import requests
 import json
@@ -21,8 +39,18 @@ class AIResumeAnalyzer:
         self.google_api_key = os.getenv("GOOGLE_API_KEY")
         self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         
-        if self.google_api_key:
-            genai.configure(api_key=self.google_api_key)
+        # Check if Google AI is available and configured
+        if self.google_api_key and GOOGLE_AI_AVAILABLE:
+            try:
+                genai.configure(api_key=self.google_api_key)
+                self.google_ai_configured = True
+            except Exception as e:
+                st.warning(f"⚠️ Google AI configuration failed: {str(e)}")
+                self.google_ai_configured = False
+        else:
+            self.google_ai_configured = False
+            if not GOOGLE_AI_AVAILABLE:
+                st.info("ℹ️ Google AI not available - using OpenRouter fallback")
     
     def extract_text_from_pdf(self, pdf_file):
         """Extract text from PDF using pdfplumber and OCR if needed"""
@@ -186,8 +214,12 @@ class AIResumeAnalyzer:
         if not resume_text:
             return {"error": "Resume text is required for analysis."}
         
-        if not self.google_api_key:
-            return {"error": "Google API key is not configured. Please add it to your .env file."}
+        # Check if Google AI is available and configured
+        if not GOOGLE_AI_AVAILABLE:
+            return {"error": "Google AI is not available in this environment. Please use OpenRouter analysis instead."}
+            
+        if not self.google_ai_configured:
+            return {"error": "Google AI is not configured. Please check your API key or use OpenRouter analysis instead."}
         
         try:
             model = genai.GenerativeModel("gemini-1.5-flash")

@@ -6,6 +6,7 @@ streamlit-extras
 
 # AI and Machine Learning
 openai
+google-generativeai
 python-dotenv
 
 # PDF and Document Processing (Cloud compatible - no compilation needed)
