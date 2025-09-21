@@ -3213,45 +3213,67 @@ class ResumeApp:
                         </div>
                         """, unsafe_allow_html=True)
         
-        # Annotated PDF Download
-        st.markdown("## 📄 Download Annotated Resume")
+        # Annotated PDF Download - ALWAYS AVAILABLE
+        st.markdown("## 📄 Download Your Resume")
         
         annotated_pdf = results.get('annotated_pdf')
         annotated_pdf_path = results.get('annotated_pdf_path')
+        is_fallback = results.get('fallback_mode', False)
         
         if annotated_pdf:
-            st.success("✅ Your annotated resume is ready for download!")
+            if is_fallback:
+                st.warning("⚠️ PDF annotation was not available, but your original resume is ready for download.")
+                success_message = "📥 Original Resume Available"
+                file_description = "original resume (annotation failed)"
+            else:
+                st.success("✅ Your annotated resume is ready for download!")
+                success_message = "📥 Download Annotated Resume PDF"
+                file_description = "annotated resume with AI feedback"
             
             # Show where the file was saved
             if annotated_pdf_path:
-                st.info(f"💾 **Annotated PDF saved to:** `{annotated_pdf_path}`")
+                st.info(f"💾 **PDF saved to:** `{annotated_pdf_path}`")
             
-            st.markdown("""
-            <div style='background-color: #1e1e1e; padding: 20px; border-radius: 10px; margin: 10px 0; border-left: 4px solid #4CAF50;'>
-                <h4>📋 What you'll get in your annotated PDF:</h4>
-                <ul>
-                    <li><span style='color: #4CAF50;'>✅ Green highlights</span> - Excellent content that stands out</li>
-                    <li><span style='color: #FFC107;'>⚠️ Yellow highlights</span> - Areas that need attention</li>
-                    <li><span style='color: #FF5252;'>❌ Red highlights</span> - Critical issues requiring immediate fixes</li>
-                    <li>💡 Hover tooltips with detailed improvement suggestions</li>
-                    <li>⌖ Radar icons marking analyzed sections</li>
-                </ul>
-            </div>
-            """, unsafe_allow_html=True)
+            if not is_fallback:
+                st.markdown("""
+                <div style='background-color: #1e1e1e; padding: 20px; border-radius: 10px; margin: 10px 0; border-left: 4px solid #4CAF50;'>
+                    <h4>📋 What you'll get in your annotated PDF:</h4>
+                    <ul>
+                        <li><span style='color: #4CAF50;'>✅ Green highlights</span> - Excellent content that stands out</li>
+                        <li><span style='color: #FFC107;'>⚠️ Yellow highlights</span> - Areas that need attention</li>
+                        <li><span style='color: #FF5252;'>❌ Red highlights</span> - Critical issues requiring immediate fixes</li>
+                        <li>💡 Hover tooltips with detailed improvement suggestions</li>
+                        <li>⌖ Radar icons marking analyzed sections</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div style='background-color: #1e1e1e; padding: 20px; border-radius: 10px; margin: 10px 0; border-left: 4px solid #FFC107;'>
+                    <h4>📋 Fallback Mode - Original Resume Available:</h4>
+                    <ul>
+                        <li>📄 Your original resume file (PDF annotation unavailable in cloud environment)</li>
+                        <li>📊 All analysis feedback is displayed above in text format</li>
+                        <li>💡 Use the text feedback to manually improve your resume</li>
+                        <li>🔄 You can try again later when full annotation is available</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
             
             # Download button
             st.download_button(
-                label="📥 Download Annotated Resume PDF",
+                label=success_message,
                 data=annotated_pdf,
-                file_name=f"resume_radar_{filename.replace('.pdf', '_annotated.pdf')}",
+                file_name=f"resume_radar_{filename.replace('.pdf', '_reviewed.pdf')}" if not is_fallback else f"resume_radar_{filename}",
                 mime="application/pdf",
                 use_container_width=True,
-                help="Download your resume with AI-generated highlights and tooltips"
+                help=f"Download your {file_description}"
             )
             
-            st.balloons()
+            if not is_fallback:
+                st.balloons()
         else:
-            st.warning("⚠️ Annotated PDF generation failed. Please try again.")
+            st.error("❌ PDF generation completely failed. Please try uploading your resume again.")
         
         # Analysis Summary
         st.markdown("## 📊 Analysis Summary")

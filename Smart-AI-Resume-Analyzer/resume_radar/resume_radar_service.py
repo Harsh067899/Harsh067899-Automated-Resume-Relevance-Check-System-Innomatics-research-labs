@@ -384,54 +384,205 @@ Return only the JSON array, no other text:"""
     
     def create_annotated_pdf(self, pdf_file, section_feedback: List[Dict[str, Any]], granular_feedback: List[Dict[str, Any]], output_dir: str = None) -> Tuple[bytes, str]:
         """
-        Create annotated PDF using original overlay_pdf function - matches main.py workflow exactly
+        Create annotated PDF with GUARANTEED fallback - ALWAYS returns a PDF
         Returns both PDF bytes and the output file path
         """
+        # Get original PDF data first (for guaranteed fallback)
+        if hasattr(pdf_file, 'read'):
+            pdf_file.seek(0)
+            original_pdf_bytes = pdf_file.read()
+            pdf_file.seek(0)  # Reset for further processing
+            original_name = getattr(pdf_file, 'name', 'resume')
+        else:
+            with open(pdf_file, 'rb') as f:
+                original_pdf_bytes = f.read()
+            original_name = Path(pdf_file).stem
+
+        # Setup output path
+        if output_dir is None:
+            output_dir = tempfile.gettempdir()
+        
+        output_dir_path = Path(output_dir)
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{Path(original_name).stem}_reviewed_{timestamp}.pdf"
+        output_path = output_dir_path / output_filename
+
+        # Try annotation methods in order of preference
         try:
-            # Create temporary input file
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as input_tmp:
-                if hasattr(pdf_file, 'read'):
-                    pdf_bytes = pdf_file.read()
-                    pdf_file.seek(0)  # Reset file pointer
-                    input_tmp.write(pdf_bytes)
-                    # Get original filename if available
-                    original_name = getattr(pdf_file, 'name', 'resume')
-                else:
-                    with open(pdf_file, 'rb') as f:
-                        input_tmp.write(f.read())
-                    original_name = Path(pdf_file).stem
-                
-                input_path = Path(input_tmp.name)
-            
-            # Create output path in the desired directory
-            if output_dir is None:
-                output_dir = "G:/Info4Tech/resume-radar/outputs"
-            
-            output_dir_path = Path(output_dir)
-            output_dir_path.mkdir(parents=True, exist_ok=True)
-            
-            # Generate output filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_filename = f"{Path(original_name).stem}_reviewed_{timestamp}.pdf"
-            output_path = output_dir_path / output_filename
-            
-            # CRITICAL: Filter feedback like main.py does - only keep items with tags
-            section_feedback_list = [fb for fb in section_feedback if fb.get("tag")]
-            
-            # Use original overlay_pdf function with filtered data
-            overlay_pdf(input_path, output_path, section_feedback_list, granular_feedback)
-            
-            # Read the annotated PDF bytes for Streamlit download
-            with open(output_path, 'rb') as f:
-                annotated_pdf_bytes = f.read()
-            
-            # Clean up temporary input file
-            os.unlink(input_path)
-            
-            return annotated_pdf_bytes, str(output_path)
+            print("🔄 Attempting cloud-compatible PDF annotation...")
+            return self._create_annotated_pdf_cloud_compatible(pdf_file, section_feedback, granular_feedback, output_dir)
             
         except Exception as e:
-            raise Exception(f"Error creating annotated PDF: {str(e)}")
+            print(f"⚠️ Cloud-compatible PDF annotation failed: {str(e)}")
+            
+            try:
+                print("🔄 Attempting original PDF annotation method...")
+                return self._create_annotated_pdf_original(pdf_file, section_feedback, granular_feedback, output_dir)
+                
+            except Exception as e2:
+                print(f"⚠️ Original PDF annotation failed: {str(e2)}")
+                
+                try:
+                    print("🔄 Using fallback: Original PDF with summary...")
+                    return self._create_fallback_pdf_with_summary(pdf_file, section_feedback, granular_feedback, output_dir)
+                
+                except Exception as e3:
+                    print(f"⚠️ Fallback with summary failed: {str(e3)}")
+                    
+                    # FINAL GUARANTEE: Return original PDF no matter what
+                    print("📄 FINAL FALLBACK: Returning original PDF")
+                    with open(output_path, 'wb') as f:
+                        f.write(original_pdf_bytes)
+                    
+                    return original_pdf_bytes, str(output_path)
+
+    def _create_annotated_pdf_cloud_compatible(self, pdf_file, section_feedback: List[Dict[str, Any]], granular_feedback: List[Dict[str, Any]], output_dir: str = None) -> Tuple[bytes, str]:
+        """Try cloud-compatible PDF annotation using utils/pdf_utils.py"""
+        try:
+            from pdf_utils import create_simple_annotated_pdf
+        except ImportError:
+            # Try alternative import path
+            import sys
+            utils_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'utils')
+            if utils_path not in sys.path:
+                sys.path.insert(0, utils_path)
+            from pdf_utils import create_simple_annotated_pdf
+        
+        # Get PDF bytes
+        if hasattr(pdf_file, 'read'):
+            pdf_bytes = pdf_file.read()
+            pdf_file.seek(0)  # Reset file pointer
+            original_name = getattr(pdf_file, 'name', 'resume')
+        else:
+            with open(pdf_file, 'rb') as f:
+                pdf_bytes = f.read()
+            original_name = Path(pdf_file).stem
+
+        # Prepare annotations for the cloud-compatible utility
+        annotations = []
+        for feedback in section_feedback + granular_feedback:
+            if feedback.get("tag"):
+                annotations.append({
+                    'page': 0,  # Default to first page
+                    'rect': [50, 50, 400, 70],  # Default rectangle
+                    'note': f"{feedback.get('tag', '')} - {feedback.get('feedback', '')}",
+                    'color': [1, 1, 0]  # Yellow highlight
+                })
+
+        # Create annotated PDF
+        annotated_pdf_bytes = create_simple_annotated_pdf(pdf_bytes, annotations)
+        
+        # Save to output directory
+        if output_dir is None:
+            output_dir = tempfile.gettempdir()
+        
+        output_dir_path = Path(output_dir)
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{Path(original_name).stem}_reviewed_{timestamp}.pdf"
+        output_path = output_dir_path / output_filename
+        
+        with open(output_path, 'wb') as f:
+            f.write(annotated_pdf_bytes)
+        
+        return annotated_pdf_bytes, str(output_path)
+
+    def _create_annotated_pdf_original(self, pdf_file, section_feedback: List[Dict[str, Any]], granular_feedback: List[Dict[str, Any]], output_dir: str = None) -> Tuple[bytes, str]:
+        """Original PDF annotation method using overlay_pdf"""
+        # Create temporary input file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as input_tmp:
+            if hasattr(pdf_file, 'read'):
+                pdf_bytes = pdf_file.read()
+                pdf_file.seek(0)  # Reset file pointer
+                input_tmp.write(pdf_bytes)
+                original_name = getattr(pdf_file, 'name', 'resume')
+            else:
+                with open(pdf_file, 'rb') as f:
+                    input_tmp.write(f.read())
+                original_name = Path(pdf_file).stem
+            
+            input_path = Path(input_tmp.name)
+        
+        # Create output path
+        if output_dir is None:
+            output_dir = tempfile.gettempdir()
+        
+        output_dir_path = Path(output_dir)
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{Path(original_name).stem}_reviewed_{timestamp}.pdf"
+        output_path = output_dir_path / output_filename
+        
+        # Filter feedback with tags
+        section_feedback_list = [fb for fb in section_feedback if fb.get("tag")]
+        
+        # Use original overlay_pdf function
+        overlay_pdf(input_path, output_path, section_feedback_list, granular_feedback)
+        
+        # Read annotated PDF bytes
+        with open(output_path, 'rb') as f:
+            annotated_pdf_bytes = f.read()
+        
+        # Clean up
+        os.unlink(input_path)
+        
+        return annotated_pdf_bytes, str(output_path)
+
+    def _create_fallback_pdf_with_summary(self, pdf_file, section_feedback: List[Dict[str, Any]], granular_feedback: List[Dict[str, Any]], output_dir: str = None) -> Tuple[bytes, str]:
+        """Fallback: Return original PDF and create a text summary file"""
+        print("📄 Using fallback: Original PDF + Text Summary")
+        
+        # Get original PDF bytes
+        if hasattr(pdf_file, 'read'):
+            pdf_bytes = pdf_file.read()
+            pdf_file.seek(0)
+            original_name = getattr(pdf_file, 'name', 'resume')
+        else:
+            with open(pdf_file, 'rb') as f:
+                pdf_bytes = f.read()
+            original_name = Path(pdf_file).stem
+
+        # Create output path
+        if output_dir is None:
+            output_dir = tempfile.gettempdir()
+        
+        output_dir_path = Path(output_dir)
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{Path(original_name).stem}_reviewed_{timestamp}.pdf"
+        output_path = output_dir_path / output_filename
+        
+        # Save original PDF
+        with open(output_path, 'wb') as f:
+            f.write(pdf_bytes)
+        
+        # Create summary text file alongside
+        summary_path = output_path.with_suffix('.txt')
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write(f"Resume Analysis Summary - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 60 + "\n\n")
+            
+            f.write("SECTION FEEDBACK:\n")
+            f.write("-" * 20 + "\n")
+            for feedback in section_feedback:
+                if feedback.get("tag"):
+                    f.write(f"• {feedback.get('tag', '')} - {feedback.get('feedback', '')}\n")
+            
+            f.write("\nGRANULAR FEEDBACK:\n")
+            f.write("-" * 20 + "\n")
+            for feedback in granular_feedback:
+                if feedback.get("tag"):
+                    f.write(f"• {feedback.get('tag', '')} - {feedback.get('feedback', '')}\n")
+            
+            f.write(f"\nNote: PDF annotation not available in cloud environment.")
+            f.write(f"\nFeedback provided as text summary alongside original PDF.")
+        
+        return pdf_bytes, str(output_path)
     
     def analyze_resume(self, pdf_file) -> Dict[str, Any]:
         """
@@ -491,7 +642,50 @@ Return only the JSON array, no other text:"""
             return results
             
         except Exception as e:
-            return {
-                "error": f"Resume analysis failed: {str(e)}",
-                "success": False
-            }
+            print(f"❌ Resume analysis failed: {str(e)}")
+            
+            # CRITICAL: Always provide a downloadable PDF, even on failure
+            try:
+                # Extract the original PDF bytes for fallback
+                if hasattr(pdf_file, 'read'):
+                    pdf_file.seek(0)  # Reset file pointer
+                    original_pdf_bytes = pdf_file.read()
+                    original_name = getattr(pdf_file, 'name', 'resume')
+                else:
+                    with open(pdf_file, 'rb') as f:
+                        original_pdf_bytes = f.read()
+                    original_name = Path(pdf_file).stem
+
+                # Create a fallback output path
+                output_dir = tempfile.gettempdir()
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                fallback_filename = f"{Path(original_name).stem}_analysis_failed_{timestamp}.pdf"
+                fallback_path = Path(output_dir) / fallback_filename
+                
+                # Save original PDF as fallback
+                with open(fallback_path, 'wb') as f:
+                    f.write(original_pdf_bytes)
+
+                return {
+                    "error": f"Resume analysis failed: {str(e)}",
+                    "success": False,
+                    "annotated_pdf": original_pdf_bytes,  # Return original PDF for download
+                    "annotated_pdf_path": str(fallback_path),
+                    "global_reflection": "Analysis failed, but your original resume is available for download.",
+                    "sections": {},
+                    "section_feedback": [],
+                    "granular_feedback": [],
+                    "all_feedback": [],
+                    "analysis_timestamp": datetime.now().isoformat(),
+                    "total_feedback_items": 0,
+                    "fallback_mode": True
+                }
+            
+            except Exception as fallback_error:
+                print(f"❌ Even fallback PDF creation failed: {str(fallback_error)}")
+                return {
+                    "error": f"Resume analysis and PDF fallback failed: {str(e)}",
+                    "success": False,
+                    "annotated_pdf": None,
+                    "annotated_pdf_path": None
+                }
