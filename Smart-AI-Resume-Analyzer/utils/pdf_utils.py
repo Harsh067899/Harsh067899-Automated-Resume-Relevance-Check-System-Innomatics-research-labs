@@ -4,6 +4,7 @@ Provides fallback PDF processing when PyMuPDF is not available
 """
 
 import io
+import os
 from typing import Optional, Dict, Any, List, Tuple
 
 # Try multiple PDF processing libraries for cloud compatibility
@@ -143,18 +144,159 @@ def _extract_with_fitz(pdf_file) -> str:
 
 def create_simple_annotated_pdf(original_pdf, annotations: List[Dict]) -> bytes:
     """
-    Create a simple annotated PDF without PyMuPDF
-    Falls back to text-based feedback when PDF annotation is not available
+    Create annotated PDF with cloud-compatible methods
+    Uses reportlab to overlay annotations on original PDF
     """
     try:
+        # First try PyMuPDF if available
         if 'fitz' in PDF_PROCESSORS:
             return _create_fitz_annotated_pdf(original_pdf, annotations)
-        else:
-            # Fallback: return original PDF with a note about text-based feedback
-            print("⚠️ PDF annotation not available without PyMuPDF. Providing text-based feedback.")
-            return original_pdf
+        
+        # Cloud-compatible method using reportlab
+        print("🔄 Using cloud-compatible PDF annotation with reportlab...")
+        return _create_reportlab_annotated_pdf(original_pdf, annotations)
+        
     except Exception as e:
         print(f"❌ PDF annotation failed: {str(e)}")
+        # Return original PDF if all methods fail
+        if hasattr(original_pdf, 'read'):
+            original_pdf.seek(0)
+            return original_pdf.read()
+        return original_pdf
+
+
+def _create_reportlab_annotated_pdf(original_pdf, annotations: List[Dict]) -> bytes:
+    """Create annotated PDF using reportlab - cloud compatible"""
+    try:
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        from reportlab.pdfbase.pdfmetrics import stringWidth
+        import tempfile
+        
+        # Get original PDF bytes
+        if hasattr(original_pdf, 'read'):
+            original_pdf.seek(0)
+            pdf_bytes = original_pdf.read()
+        else:
+            pdf_bytes = original_pdf
+        
+        # Create a temporary file for the overlay
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as overlay_file:
+            overlay_path = overlay_file.name
+            
+            # Create overlay PDF with annotations
+            c = canvas.Canvas(overlay_path, pagesize=letter)
+            page_width, page_height = letter
+            
+            # Group annotations by page
+            page_annotations = {}
+            for annotation in annotations:
+                page_num = annotation.get('page', 0)
+                if page_num not in page_annotations:
+                    page_annotations[page_num] = []
+                page_annotations[page_num].append(annotation)
+            
+            # Create overlay for each page with annotations
+            for page_num, page_annots in page_annotations.items():
+                # Add annotations to this page
+                for annotation in page_annots:
+                    note = annotation.get('note', 'Feedback')
+                    color = annotation.get('color', [1, 1, 0])  # Default yellow
+                    rect = annotation.get('rect', [50, page_height-100, 400, page_height-50])
+                    
+                    # Convert color to reportlab color
+                    if len(color) >= 3:
+                        rl_color = colors.Color(color[0], color[1], color[2], alpha=0.3)
+                    else:
+                        rl_color = colors.Color(1, 1, 0, alpha=0.3)
+                    
+                    # Draw highlight rectangle
+                    c.setFillColor(rl_color)
+                    c.rect(rect[0], rect[1], rect[2]-rect[0], rect[3]-rect[1], fill=1, stroke=0)
+                    
+                    # Add text annotation
+                    c.setFillColor(colors.black)
+                    c.setFont("Helvetica", 8)
+                    
+                    # Word wrap the note text
+                    words = note.split()
+                    lines = []
+                    current_line = ""
+                    max_width = rect[2] - rect[0] - 10
+                    
+                    for word in words:
+                        test_line = current_line + " " + word if current_line else word
+                        if stringWidth(test_line, "Helvetica", 8) <= max_width:
+                            current_line = test_line
+                        else:
+                            if current_line:
+                                lines.append(current_line)
+                            current_line = word
+                    
+                    if current_line:
+                        lines.append(current_line)
+                    
+                    # Draw text lines
+                    y_offset = rect[3] - 12
+                    for line in lines[:3]:  # Limit to 3 lines
+                        c.drawString(rect[0] + 5, y_offset, line)
+                        y_offset -= 10
+                
+                # End this page
+                c.showPage()
+            
+            c.save()
+        
+        # Now merge the overlay with the original PDF
+        try:
+            import pypdf
+            
+            # Read original PDF
+            original_reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+            
+            # Read overlay PDF
+            with open(overlay_path, 'rb') as overlay_file:
+                overlay_reader = pypdf.PdfReader(overlay_file)
+                
+                # Create output PDF
+                output_writer = pypdf.PdfWriter()
+                
+                # Merge pages
+                for page_num, page in enumerate(original_reader.pages):
+                    # Get overlay page if it exists
+                    if page_num < len(overlay_reader.pages):
+                        overlay_page = overlay_reader.pages[page_num]
+                        page.merge_page(overlay_page)
+                    
+                    output_writer.add_page(page)
+                
+                # Write to bytes
+                output_bytes = io.BytesIO()
+                output_writer.write(output_bytes)
+                annotated_pdf_bytes = output_bytes.getvalue()
+        
+        except Exception as merge_error:
+            print(f"⚠️ PDF merge failed: {merge_error}")
+            # Return original PDF if merge fails
+            annotated_pdf_bytes = pdf_bytes
+        
+        # Clean up temporary file
+        try:
+            os.unlink(overlay_path)
+        except:
+            pass
+        
+        print("✅ Cloud-compatible PDF annotation completed")
+        return annotated_pdf_bytes
+    
+    except Exception as e:
+        print(f"❌ Reportlab annotation failed: {str(e)}")
+        # Return original PDF
+        if hasattr(original_pdf, 'read'):
+            original_pdf.seek(0)
+            return original_pdf.read()
         return original_pdf
 
 

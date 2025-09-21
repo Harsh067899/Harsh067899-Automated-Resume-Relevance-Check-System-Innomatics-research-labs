@@ -462,14 +462,37 @@ Return only the JSON array, no other text:"""
 
         # Prepare annotations for the cloud-compatible utility
         annotations = []
-        for feedback in section_feedback + granular_feedback:
+        y_position = 750  # Start from top of page
+        
+        for i, feedback in enumerate(section_feedback + granular_feedback):
             if feedback.get("tag"):
+                # Determine color based on tag
+                tag = feedback.get("tag", "")
+                if "[GOOD]" in tag or "[EXCELLENT]" in tag:
+                    color = [0, 0.8, 0]  # Green
+                elif "[BAD]" in tag or "[CRITICAL]" in tag:
+                    color = [1, 0, 0]  # Red
+                elif "[CAUTION]" in tag or "[WARNING]" in tag:
+                    color = [1, 1, 0]  # Yellow
+                else:
+                    color = [0, 0, 1]  # Blue for other feedback
+                
+                # Create annotation with proper positioning
+                note_text = f"{feedback.get('tag', '')} - {feedback.get('feedback', '')}"
+                if len(note_text) > 100:
+                    note_text = note_text[:97] + "..."
+                
                 annotations.append({
-                    'page': 0,  # Default to first page
-                    'rect': [50, 50, 400, 70],  # Default rectangle
-                    'note': f"{feedback.get('tag', '')} - {feedback.get('feedback', '')}",
-                    'color': [1, 1, 0]  # Yellow highlight
+                    'page': 0,  # First page
+                    'rect': [50, y_position - 40, 550, y_position],  # Wider rectangle
+                    'note': note_text,
+                    'color': color
                 })
+                
+                # Move to next position
+                y_position -= 50
+                if y_position < 100:  # Reset to top if running out of space
+                    y_position = 750
 
         # Create annotated PDF
         annotated_pdf_bytes = create_simple_annotated_pdf(pdf_bytes, annotations)
