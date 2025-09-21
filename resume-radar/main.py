@@ -9,7 +9,7 @@ os.environ["MUPDF_LOG_LEVEL"] = "0"  # attempt to silence MuPDF logs
 # TODO: find a workaround or alternative annotation type.
 import fitz  # PyMuPDF
 
-import PyPDF2
+import pypdf
 
 from pathlib import Path
 from openai import OpenAI
@@ -36,11 +36,11 @@ client = OpenAI(
 )
 
 def extract_text_from_pdf(path: Path, method: str = "pymupdf") -> str:
-    """Extract text from PDF using either PyPDF2 or PyMuPDF (default)."""
+    """Extract text from PDF using either pypdf or PyMuPDF (default)."""
     text = ""
     if method == "pypdf2":
         with open(path, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
+            reader = pypdf.PdfReader(f)
             for page in reader.pages:
                 text += page.extract_text() or ""
                 text += "\n"

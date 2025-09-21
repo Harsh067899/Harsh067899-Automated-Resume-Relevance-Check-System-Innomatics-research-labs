@@ -1,6 +1,15 @@
-pypdf2
+pypdf
 pymupdf
 python-dotenv
 openai
 reportlab
 pytest   # for running tests
+pip>=25.2
+setuptools>=75.1.0
+wheel>=0.44.0
+
+numpy==1.26.4
+pandas==2.2.2
+PyMuPDF==1.24.9
+streamlit==1.38.0
+rich==14.1.0

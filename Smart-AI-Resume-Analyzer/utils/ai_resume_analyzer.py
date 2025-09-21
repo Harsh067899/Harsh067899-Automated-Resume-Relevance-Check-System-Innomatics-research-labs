@@ -94,8 +94,8 @@ class AIResumeAnalyzer:
                 os.unlink(temp_path)  # Clean up the temp file
                 return text.strip()
             
-            # Try PyPDF2 as a fallback
-            st.info("Trying PyPDF2 extraction method...")
+            # Try pypdf as a fallback
+            st.info("Trying pypdf extraction method...")
             try:
                 import pypdf
                 pdf_text = ""
@@ -110,7 +110,7 @@ class AIResumeAnalyzer:
                     os.unlink(temp_path)  # Clean up the temp file
                     return pdf_text.strip()
             except Exception as e:
-                st.warning(f"PyPDF2 extraction failed: {e}")
+                st.warning(f"pypdf extraction failed: {e}")
             
             # If we got here, both extraction methods failed
             st.warning("Standard text extraction methods failed. Your PDF might be image-based or scanned.")

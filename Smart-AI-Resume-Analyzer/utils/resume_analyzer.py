@@ -119,7 +119,7 @@ class ResumeAnalyzer:
         
     def extract_text_from_pdf(self, file):
         try:
-            import PyPDF2
+            import pypdf
             import io
             
             # Create a PDF reader object
@@ -133,7 +133,7 @@ class ResumeAnalyzer:
                 file_content = file
                 
             # Create BytesIO from bytes content
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
+            pdf_reader = pypdf.PdfReader(io.BytesIO(file_content))
             
             # Extract text from all pages
             text = ""
