@@ -40,12 +40,31 @@ from resume_radar.jd_parser import JobDescriptionParser
 from resume_radar.matching_engine import ResumeJDMatcher
 import traceback
 import plotly.express as px
-import pandas as pd
 import json
 import streamlit as st
 import datetime
 import os
 from dotenv import load_dotenv
+
+# Conditional import for pandas
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    # Create a mock pandas for basic functionality
+    class MockDataFrame:
+        def __init__(self, data=None):
+            self.data = data or []
+        def to_dict(self, orient='records'):
+            return self.data if isinstance(self.data, list) else []
+        def empty(self):
+            return len(self.data) == 0
+    
+    class MockPandas:
+        DataFrame = MockDataFrame
+    
+    pd = MockPandas()
 
 # Load environment variables from .env file
 load_dotenv()

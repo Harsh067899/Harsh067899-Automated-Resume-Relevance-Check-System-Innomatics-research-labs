@@ -14,12 +14,12 @@ pypdf
 python-docx
 pdfminer.six
 
-# Basic Data Processing (minimal versions to avoid compilation)
-numpy
-plotly
+# Data Processing (using stable versions with pre-built wheels)
+pandas==2.0.3
+numpy==1.24.3
 
-# Text Processing
-nltk
+# Visualization
+plotly
 
 # Text Processing
 nltk
@@ -32,3 +32,6 @@ requests
 
 # Essential packages
 typing-extensions
+
+# Note: selenium removed - not supported in Streamlit Cloud environment
+# LinkedIn scraper will show appropriate error message when selenium is not available

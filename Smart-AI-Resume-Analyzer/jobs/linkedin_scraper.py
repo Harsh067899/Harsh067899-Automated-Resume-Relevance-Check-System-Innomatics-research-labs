@@ -1,17 +1,35 @@
 import time
-import numpy as np
-import pandas as pd
 import streamlit as st
 from streamlit_extras.add_vertical_space import add_vertical_space
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
 import warnings
+
+# Conditional imports for cloud compatibility
+try:
+    import numpy as np
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    st.warning("⚠️ Data processing features may be limited (pandas not available)")
+
+try:
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.common.keys import Keys
+    from selenium.common.exceptions import NoSuchElementException
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    SELENIUM_AVAILABLE = False
 warnings.filterwarnings('ignore')
 
-# Import our custom webdriver utility
-from .webdriver_utils import setup_webdriver
+# Conditional import for webdriver utilities
+try:
+    from .webdriver_utils import setup_webdriver
+    WEBDRIVER_UTILS_AVAILABLE = True
+except ImportError:
+    WEBDRIVER_UTILS_AVAILABLE = False
+    def setup_webdriver():
+        raise ImportError("Webdriver utilities not available")
 
 class LinkedInScraper:
     """Class for scraping job listings from LinkedIn"""
@@ -658,5 +676,25 @@ class LinkedInScraper:
 
 def render_linkedin_scraper():
     """Render the LinkedIn job scraper interface"""
+    # Check if required dependencies are available
+    if not SELENIUM_AVAILABLE:
+        st.error("🚫 **LinkedIn Scraper Not Available**")
+        st.info("LinkedIn scraping requires Selenium and ChromeDriver which are not available in the cloud environment.")
+        st.markdown("""
+        **Alternative Solutions:**
+        - Use the **Resume Analyzer** to analyze your existing resume
+        - Try the **Job Search** feature for job recommendations
+        - Use the **Resume Builder** to create an optimized resume
+        """)
+        return
+    
+    if not PANDAS_AVAILABLE:
+        st.warning("⚠️ Data processing features may be limited without pandas.")
+        return
+    
     # Don't show the title again, as it's already shown in the job_search.py file
-    LinkedInScraper.main(show_title=False)
+    try:
+        LinkedInScraper.main(show_title=False)
+    except Exception as e:
+        st.error(f"❌ LinkedIn scraper error: {str(e)}")
+        st.info("The LinkedIn scraper may not work properly in the cloud environment due to browser limitations.")
