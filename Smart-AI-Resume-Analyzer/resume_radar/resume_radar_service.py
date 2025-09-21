@@ -76,6 +76,9 @@ TAG_COLORS = {
 
 # Removed overlay_pdf import - now using cloud-compatible PDF utils with original resume-radar logic
 
+# Add a default rating scale for prompts that reference {scale}
+DEFAULT_RATING_SCALE = 20
+
 class ResumeRadarService:
     """
     Main service class for Resume Radar functionality
@@ -100,7 +103,10 @@ class ResumeRadarService:
         
         # Use original tag colors
         self.tag_colors = TAG_COLORS
-        
+
+        # Rating scale used in prompts
+        self.rating_scale = DEFAULT_RATING_SCALE
+
         # LLM Prompts (adapted from original)
         self.global_reflection_prompt = GLOBAL_REFLECTION_PROMPT + "\nCV:\n{cv_text}\n"
         self.section_critique_prompt = SECTION_CRITIQUE_PROMPT + "\n\nSection Header: {header}\nSection Content:\n{content}\n"
@@ -160,7 +166,7 @@ class ResumeRadarService:
         if not self.client:
             return {"error": "No AI client available - please configure OPENROUTER_API_KEY"}
         
-        prompt = self.global_reflection_prompt.format(cv_text=cv_text)
+        prompt = self.global_reflection_prompt.format(cv_text=cv_text, scale=self.rating_scale)
         
         try:
             response = self.client.chat.completions.create(
