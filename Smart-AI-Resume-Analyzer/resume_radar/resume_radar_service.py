@@ -60,7 +60,15 @@ except ImportError:
 # Import the original resume-radar modules
 from .extract_pdf import extract_text_from_pdf as extract_text_from_pdf_original
 from .parse_cv import split_into_sections_dynamic
-from .overlay_pdf import overlay_pdf, TAG_COLORS
+# TAG colors from original resume-radar system
+TAG_COLORS = {
+    "[GOOD]": [0.0, 0.7, 0.0],      # Green
+    "[CAUTION]": [1.0, 0.7, 0.0],   # Yellow
+    "[BAD]": [1.0, 0.2, 0.2],       # Red
+    "[INFO]": [0.0, 0.5, 1.0],      # Blue
+}
+
+# Removed overlay_pdf import - now using cloud-compatible PDF utils with original resume-radar logic
 
 class ResumeRadarService:
     """
@@ -409,20 +417,20 @@ Return only the JSON array, no other text:"""
         output_filename = f"{Path(original_name).stem}_reviewed_{timestamp}.pdf"
         output_path = output_dir_path / output_filename
 
-        # Try annotation methods in order of preference
+        # Try annotation methods in order of preference (Original first!)
         try:
-            print("🔄 Attempting cloud-compatible PDF annotation...")
-            return self._create_annotated_pdf_cloud_compatible(pdf_file, section_feedback, granular_feedback, output_dir)
+            print("🔄 Attempting original resume-radar PDF annotation...")
+            return self._create_annotated_pdf_original(pdf_file, section_feedback, granular_feedback, output_dir)
             
         except Exception as e:
-            print(f"⚠️ Cloud-compatible PDF annotation failed: {str(e)}")
+            print(f"⚠️ Original PDF annotation failed: {str(e)}")
             
             try:
-                print("🔄 Attempting original PDF annotation method...")
-                return self._create_annotated_pdf_original(pdf_file, section_feedback, granular_feedback, output_dir)
+                print("🔄 Attempting cloud-compatible PDF annotation...")
+                return self._create_annotated_pdf_cloud_compatible(pdf_file, section_feedback, granular_feedback, output_dir)
                 
             except Exception as e2:
-                print(f"⚠️ Original PDF annotation failed: {str(e2)}")
+                print(f"⚠️ Cloud-compatible PDF annotation failed: {str(e2)}")
                 
                 try:
                     print("🔄 Using fallback: Original PDF with summary...")
@@ -514,46 +522,102 @@ Return only the JSON array, no other text:"""
         return annotated_pdf_bytes, str(output_path)
 
     def _create_annotated_pdf_original(self, pdf_file, section_feedback: List[Dict[str, Any]], granular_feedback: List[Dict[str, Any]], output_dir: str = None) -> Tuple[bytes, str]:
-        """Original PDF annotation method using overlay_pdf"""
-        # Create temporary input file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as input_tmp:
+        """Original PDF annotation method using resume-radar overlay system"""
+        try:
+            from utils.pdf_utils import create_simple_annotated_pdf
+            
+            # Prepare annotations in original format (snippet, note, tag)
+            annotations = self._prepare_annotations_for_original_overlay(section_feedback, granular_feedback)
+            
+            # Create annotated PDF using original overlay system
+            annotated_pdf_bytes = create_simple_annotated_pdf(pdf_file, annotations)
+            
+            # Generate output path
+            if hasattr(pdf_file, 'name'):
+                original_name = Path(pdf_file.name).stem
+            else:
+                original_name = 'resume'
+            
+            if output_dir is None:
+                output_dir = tempfile.gettempdir()
+            
+            output_dir_path = Path(output_dir)
+            output_dir_path.mkdir(parents=True, exist_ok=True)
+            
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_filename = f"{original_name}_reviewed_{timestamp}.pdf"
+            output_path = output_dir_path / output_filename
+            
+            # Save annotated PDF
+            with open(output_path, 'wb') as f:
+                f.write(annotated_pdf_bytes)
+            
+            print(f"✅ Original annotation system created PDF: {output_path}")
+            return annotated_pdf_bytes, str(output_path)
+            
+        except Exception as e:
+            print(f"❌ Original annotation failed: {e}")
+            # Fall back to returning original PDF
             if hasattr(pdf_file, 'read'):
+                pdf_file.seek(0)
                 pdf_bytes = pdf_file.read()
-                pdf_file.seek(0)  # Reset file pointer
-                input_tmp.write(pdf_bytes)
-                original_name = getattr(pdf_file, 'name', 'resume')
             else:
                 with open(pdf_file, 'rb') as f:
-                    input_tmp.write(f.read())
-                original_name = Path(pdf_file).stem
+                    pdf_bytes = f.read()
             
-            input_path = Path(input_tmp.name)
+            # Still create output file
+            if output_dir is None:
+                output_dir = tempfile.gettempdir()
+            output_dir_path = Path(output_dir)
+            output_dir_path.mkdir(parents=True, exist_ok=True)
+            
+            original_name = getattr(pdf_file, 'name', 'resume') if hasattr(pdf_file, 'name') else 'resume'
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_filename = f"{Path(original_name).stem}_reviewed_{timestamp}.pdf"
+            output_path = output_dir_path / output_filename
+            
+            with open(output_path, 'wb') as f:
+                f.write(pdf_bytes)
+            
+            return pdf_bytes, str(output_path)
+
+    def _prepare_annotations_for_original_overlay(self, section_feedback: List[Dict[str, Any]], granular_feedback: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Prepare annotations for original resume-radar overlay system"""
+        annotations = []
         
-        # Create output path
-        if output_dir is None:
-            output_dir = tempfile.gettempdir()
+        # Process section feedback
+        for feedback in section_feedback:
+            if feedback.get("tag") and feedback.get("feedback"):
+                annotation = {
+                    'snippet': feedback.get('section_title', feedback.get('tag', '')),
+                    'note': feedback.get('feedback', ''),
+                    'tag': feedback.get('tag', '[INFO]')
+                }
+                annotations.append(annotation)
         
-        output_dir_path = Path(output_dir)
-        output_dir_path.mkdir(parents=True, exist_ok=True)
+        # Process granular feedback
+        for feedback in granular_feedback:
+            if feedback.get("snippet") and feedback.get("feedback"):
+                # Extract tag from feedback content
+                feedback_text = feedback.get("feedback", "")
+                tag = "[INFO]"  # default
+                
+                if any(word in feedback_text.lower() for word in ['good', 'great', 'excellent', 'strong']):
+                    tag = "[GOOD]"
+                elif any(word in feedback_text.lower() for word in ['caution', 'careful', 'consider', 'improve']):
+                    tag = "[CAUTION]"
+                elif any(word in feedback_text.lower() for word in ['bad', 'poor', 'weak', 'avoid', 'remove']):
+                    tag = "[BAD]"
+                
+                annotation = {
+                    'snippet': feedback.get('snippet', ''),
+                    'note': feedback_text,
+                    'tag': tag
+                }
+                annotations.append(annotation)
         
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"{Path(original_name).stem}_reviewed_{timestamp}.pdf"
-        output_path = output_dir_path / output_filename
-        
-        # Filter feedback with tags
-        section_feedback_list = [fb for fb in section_feedback if fb.get("tag")]
-        
-        # Use original overlay_pdf function
-        overlay_pdf(input_path, output_path, section_feedback_list, granular_feedback)
-        
-        # Read annotated PDF bytes
-        with open(output_path, 'rb') as f:
-            annotated_pdf_bytes = f.read()
-        
-        # Clean up
-        os.unlink(input_path)
-        
-        return annotated_pdf_bytes, str(output_path)
+        print(f"📝 Prepared {len(annotations)} annotations for original overlay system")
+        return annotations
 
     def _create_fallback_pdf_with_summary(self, pdf_file, section_feedback: List[Dict[str, Any]], granular_feedback: List[Dict[str, Any]], output_dir: str = None) -> Tuple[bytes, str]:
         """Fallback: Return original PDF and create a text summary file"""
